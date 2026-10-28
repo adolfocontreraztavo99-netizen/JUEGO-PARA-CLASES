@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafío de Multiplicación - 5° de Primaria</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        h1, h2, .font-fun {
+            font-family: 'Fredoka', cursive;
+        }
+        .card-perspective {
+            perspective: 1000px;
+        }
+        .card-inner {
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+        }
+        .card-item:hover .card-inner {
+            transform: translateY(-4px) scale(1.02);
+        }
+        .card-selected {
+            border-color: #f59e0b !important;
+            background-color: #fef3c7 !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+            transform: scale(1.04);
+        }
+        .card-matched {
+            border-color: #10b981 !important;
+            background-color: #d1fae5 !important;
+            color: #065f46 !important;
+            cursor: default;
+            opacity: 0.85;
+            transform: scale(0.98);
+        }
+        .card-wrong {
+            animation: shake 0.5s ease-in-out;
+            border-color: #ef4444 !important;
+            background-color: #fee2e2 !important;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between p-4 md:p-6 text-slate-800">
+
+    <!-- Top Banner / Header -->
+    <header class="w-full max-w-4xl bg-white/90 backdrop-blur-md rounded-2xl p-4 md:p-6 shadow-xl mb-6 text-center border-b-4 border-purple-400">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-3">
+                <span class="bg-yellow-400 text-yellow-900 p-3 rounded-xl text-2xl shadow-md">
+                    <i class="fa-solid fa-calculator"></i>
+                </span>
+                <div class="text-left">
+                    <h1 class="text-2xl md:text-3xl font-bold text-purple-900 leading-none">¡Super Multiplicaciones!</h1>
+                    <p class="text-xs md:text-sm text-purple-600 font-semibold mt-1">Matemáticas - 5° de Primaria</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button id="sound-btn" onclick="toggleSound()" class="p-2.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition duration-200" title="Activar/Desactivar sonido">
+                    <i id="sound-icon" class="fa-solid fa-volume-high text-lg"></i>
+                </button>
+                <button onclick="resetGame()" class="px-4 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-fun font-bold rounded-xl shadow-md transition transform active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> Reiniciar
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="grid grid-cols-3 gap-2 md:gap-4 mt-5">
+            <div class="bg-purple-50 rounded-xl p-2 md:p-3 border border-purple-100 flex flex-col items-center">
+                <span class="text-xs uppercase font-bold text-purple-500">Aciertos</span>
+                <span id="score-text" class="text-xl md:text-2xl font-fun font-bold text-purple-700">0 / 6</span>
+            </div>
+            <div class="bg-indigo-50 rounded-xl p-2 md:p-3 border border-indigo-100 flex flex-col items-center">
+                <span class="text-xs uppercase font-bold text-indigo-500">Intentos</span>
+                <span id="attempts-text" class="text-xl md:text-2xl font-fun font-bold text-indigo-700">0</span>
+            </div>
+            <div class="bg-pink-50 rounded-xl p-2 md:p-3 border border-pink-100 flex flex-col items-center">
+                <span class="text-xs uppercase font-bold text-pink-500">Tiempo</span>
+                <span id="timer-text" class="text-xl md:text-2xl font-fun font-bold text-pink-700">00:00</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Workspace -->
+    <main class="w-full max-w-4xl bg-white/90 backdrop-blur-md rounded-2xl p-4 md:p-8 shadow-2xl border-b-4 border-indigo-400 flex-grow flex flex-col justify-between">
+        
+        <!-- Instruction Bar -->
+        <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-xl flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-lightbulb text-blue-500 text-xl"></i>
+                <p class="text-xs md:text-base font-medium text-blue-900">
+                    Selecciona una <span class="font-bold text-indigo-600">multiplicación</span> de la izquierda y haz pareja con su <span class="font-bold text-emerald-600">resultado correcto</span> a la derecha.
+                </p>
+            </div>
+        </div>
+
+        <!-- Cards Container -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-6">
+            <!-- Left Column: Multiplication Operations -->
+            <div class="space-y-3">
+                <h2 class="text-center font-bold text-indigo-900 text-lg md:text-xl mb-3 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-square-xmark text-indigo-500"></i> Multiplicaciones
+                </h2>
+                <div id="ops-column" class="flex flex-col gap-3">
+                    <!-- Dynamic Items -->
+                </div>
+            </div>
+
+            <!-- Right Column: Results -->
+            <div class="space-y-3">
+                <h2 class="text-center font-bold text-emerald-900 text-lg md:text-xl mb-3 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-equals text-emerald-500"></i> Resultados
+                </h2>
+                <div id="res-column" class="flex flex-col gap-3">
+                    <!-- Dynamic Items -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Message Area -->
+        <div id="feedback-banner" class="h-12 flex items-center justify-center rounded-xl font-bold text-base md:text-lg transition-all duration-300 opacity-0 bg-gray-100 text-gray-700">
+            <!-- Text dynamically inserted -->
+        </div>
+    </main>
+
+    <!-- Modal Modal Felicitaciones / End Game -->
+    <div id="win-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full text-center shadow-2xl border-4 border-yellow-400 transform transition-all animate-bounce-short">
+            <div class="w-20 h-20 bg-yellow-100 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-inner">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-purple-900 font-fun mb-2">¡Felicitaciones! 🎉</h2>
+            <p class="text-gray-600 mb-6 font-medium">¡Demostraste ser un genio de las multiplicaciones!</p>
+
+            <div class="bg-purple-50 rounded-2xl p-4 mb-6 space-y-2 border border-purple-100">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-500 font-semibold">Tiempo total:</span>
+                    <span id="final-time" class="font-bold text-purple-700 text-base">00:00</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-500 font-semibold">Intentos realizados:</span>
+                    <span id="final-attempts" class="font-bold text-purple-700 text-base">0</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-500 font-semibold">Precisión:</span>
+                    <span id="final-accuracy" class="font-bold text-emerald-600 text-base">100%</span>
+                </div>
+            </div>
+
+            <button onclick="resetGame()" class="w-full py-3.5 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white font-fun font-bold text-lg rounded-xl shadow-lg transition transform active:scale-95">
+                ¡Jugar otra vez!
+            </button>
+        </div>
+    </div>
+
+    <!-- Audio Effects using Web Audio API -->
+    <script>
+        // Sound Effects Engine (Web Audio API)
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playSelect() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playMatch() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(now + 0.3);
+            }
+
+            playWrong() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.linearRampToValueAtTime(110, now + 0.2);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(now + 0.2);
+            }
+
+            playWin() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99];
+                notes.forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + (i * 0.08));
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime + (i * 0.08));
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + (i * 0.08) + 0.3);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + (i * 0.08));
+                    osc.stop(this.ctx.currentTime + (i * 0.08) + 0.3);
+                });
+            }
+        }
+
+        const sound = new SoundEffects();
+        let soundEnabled = true;
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            sound.enabled = soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            if (soundEnabled) {
+                icon.className = 'fa-solid fa-volume-high text-lg';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark text-lg text-red-400';
+            }
+        }
+
+        // Data pool tailored for 5th grade curriculum (Multi-digit & Mental Math)
+        const mathProblemsPool = [
+            { id: 1, op: "348 × 15", res: "5,220" },
+            { id: 2, op: "524 × 23", res: "12,052" },
+            { id: 3, op: "612 × 34", res: "20,808" },
+            { id: 4, op: "890 × 45", res: "40,050" },
+            { id: 5, op: "125 × 76", res: "9,500" },
+            { id: 6, op: "450 × 12", res: "5,400" },
+            { id: 7, op: "715 × 18", res: "12,870" },
+            { id: 8, op: "230 × 50", res: "11,500" },
+            { id: 9, op: "305 × 25", res: "7,625" }
+        ];
+
+        // State variables
+        let selectedOp = null;
+        let selectedRes = null;
+        let score = 0;
+        let attempts = 0;
+        let timerSeconds = 0;
+        let timerInterval = null;
+        let currentPairs = [];
+        const TOTAL_PAIRS = 6;
+
+        // Shuffle utility
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // Timer functions
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerSeconds = 0;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+            const secs = (timerSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('timer-text').innerText = `${mins}:${secs}`;
+        }
+
+        // Initialize / Reset Game
+        function resetGame() {
+            stopTimer();
+            score = 0;
+            attempts = 0;
+            selectedOp = null;
+            selectedRes = null;
+
+            document.getElementById('score-text').innerText = `0 / ${TOTAL_PAIRS}`;
+            document.getElementById('attempts-text').innerText = '0';
+            document.getElementById('win-modal').classList.add('hidden');
+            document.getElementById('win-modal').classList.remove('flex');
+            
+            showFeedback("", "neutral");
+
+            // Pick 6 random problems from pool
+            currentPairs = shuffleArray(mathProblemsPool).slice(0, TOTAL_PAIRS);
+
+            const shuffledOps = shuffleArray(currentPairs);
+            const shuffledRes = shuffleArray(currentPairs);
+
+            const opsContainer = document.getElementById('ops-column');
+            const resContainer = document.getElementById('res-column');
+
+            opsContainer.innerHTML = '';
+            resContainer.innerHTML = '';
+
+            // Render Operations Column
+            shuffledOps.forEach(item => {
+                const card = document.createElement('button');
+                card.className = 'card-item w-full text-left p-4 bg-white border-2 border-slate-200 rounded-xl font-bold text-slate-700 shadow-sm flex items-center justify-between transition-all duration-200 cursor-pointer hover:border-indigo-300';
+                card.dataset.id = item.id;
+                card.dataset.type = 'op';
+                card.innerHTML = `
+                    <span class="text-base md:text-lg font-fun text-indigo-900">${item.op}</span>
+                    <i class="fa-solid fa-circle-dot text-slate-300 text-sm card-status"></i>
+                `;
+                card.onclick = () => handleSelect(card, 'op');
+                opsContainer.appendChild(card);
+            });
+
+            // Render Results Column
+            shuffledRes.forEach(item => {
+                const card = document.createElement('button');
+                card.className = 'card-item w-full text-left p-4 bg-white border-2 border-slate-200 rounded-xl font-bold text-slate-700 shadow-sm flex items-center justify-between transition-all duration-200 cursor-pointer hover:border-emerald-300';
+                card.dataset.id = item.id;
+                card.dataset.type = 'res';
+                card.innerHTML = `
+                    <span class="text-base md:text-lg font-fun text-emerald-900">${item.res}</span>
+                    <i class="fa-solid fa-circle-dot text-slate-300 text-sm card-status"></i>
+                `;
+                card.onclick = () => handleSelect(card, 'res');
+                resContainer.appendChild(card);
+            });
+
+            startTimer();
+        }
+
+        // Selection Handler
+        function handleSelect(element, type) {
+            // Ignore if already matched or already selected
+            if (element.classList.contains('card-matched')) return;
+
+            sound.playSelect();
+
+            if (type === 'op') {
+                if (selectedOp) selectedOp.classList.remove('card-selected');
+                selectedOp = element;
+                selectedOp.classList.add('card-selected');
+            } else {
+                if (selectedRes) selectedRes.classList.remove('card-selected');
+                selectedRes = element;
+                selectedRes.classList.add('card-selected');
+            }
+
+            // If both sides are selected, check match
+            if (selectedOp && selectedRes) {
+                checkMatch();
+            }
+        }
+
+        // Check if selections match
+        function checkMatch() {
+            attempts++;
+            document.getElementById('attempts-text').innerText = attempts;
+
+            const opId = selectedOp.dataset.id;
+            const resId = selectedRes.dataset.id;
+
+            if (opId === resId) {
+                // MATCH SUCCESSFUL
+                sound.playMatch();
+                
+                selectedOp.classList.remove('card-selected');
+                selectedRes.classList.remove('card-selected');
+
+                selectedOp.classList.add('card-matched');
+                selectedRes.classList.add('card-matched');
+
+                // Update icons inside matched cards
+                selectedOp.querySelector('.card-status').className = 'fa-solid fa-circle-check text-emerald-500 text-lg';
+                selectedRes.querySelector('.card-status').className = 'fa-solid fa-circle-check text-emerald-500 text-lg';
+
+                selectedOp = null;
+                selectedRes = null;
+                score++;
+
+                document.getElementById('score-text').innerText = `${score} / ${TOTAL_PAIRS}`;
+                showFeedback("¡Excelente! Respuesta correcta ✨", "success");
+
+                if (score === TOTAL_PAIRS) {
+                    gameCompleted();
+                }
+            } else {
+                // MATCH FAILED
+                sound.playWrong();
+
+                const tempOp = selectedOp;
+                const tempRes = selectedRes;
+
+                tempOp.classList.remove('card-selected');
+                tempRes.classList.remove('card-selected');
+
+                tempOp.classList.add('card-wrong');
+                tempRes.classList.add('card-wrong');
+
+                showFeedback("¡Inténtalo de nuevo! Revisa tus cálculos 🧐", "error");
+
+                selectedOp = null;
+                selectedRes = null;
+
+                setTimeout(() => {
+                    tempOp.classList.remove('card-wrong');
+                    tempRes.classList.remove('card-wrong');
+                }, 600);
+            }
+        }
+
+        // Display feedback banner
+        function showFeedback(text, type) {
+            const banner = document.getElementById('feedback-banner');
+            banner.innerText = text;
+            banner.style.opacity = '1';
+
+            if (type === 'success') {
+                banner.className = "h-12 flex items-center justify-center rounded-xl font-bold text-sm md:text-base transition-all duration-300 opacity-100 bg-emerald-100 text-emerald-800 border border-emerald-200";
+            } else if (type === 'error') {
+                banner.className = "h-12 flex items-center justify-center rounded-xl font-bold text-sm md:text-base transition-all duration-300 opacity-100 bg-rose-100 text-rose-800 border border-rose-200";
+            } else {
+                banner.className = "h-12 flex items-center justify-center rounded-xl font-bold text-sm md:text-base transition-all duration-300 opacity-0 bg-gray-100 text-gray-700";
+            }
+        }
+
+        // Win Condition
+        function gameCompleted() {
+            stopTimer();
+            sound.playWin();
+
+            // Trigger confetti celebration
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            // Populate Modal Stats
+            const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+            const secs = (timerSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('final-time').innerText = `${mins}:${secs}`;
+            document.getElementById('final-attempts').innerText = attempts;
+            
+            const accuracy = Math.round((TOTAL_PAIRS / attempts) * 100) || 100;
+            document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+
+            // Display Modal after small delay
+            setTimeout(() => {
+                const modal = document.getElementById('win-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }, 600);
+        }
+
+        // Start game on window load
+        window.onload = () => {
+            resetGame();
+        };
+    </script>
+</body>
+</html>
